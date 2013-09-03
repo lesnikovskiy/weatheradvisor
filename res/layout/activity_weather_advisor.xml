@@ -7,17 +7,19 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".WeatherAdvisorActivity" >
-
-    <TextView
-        android:id="@+id/displayText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/display_text" />
+       
     <Button
-        android:id="@+id/getWeatherData"
+        android:id="@+id/startServiceButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/get_weather"
-        android:layout_below="@id/displayText" />
+        android:text="@string/start_service_text"
+        android:onClick="startServiceClick" />
+    <Button
+        android:id="@+id/stopServiceButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/stop_service_text"
+        android:layout_below="@id/startServiceButton"
+        android:onClick="stopServiceClick" />
 
 </RelativeLayout>

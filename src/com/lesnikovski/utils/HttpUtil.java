@@ -11,6 +11,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 
 import android.util.Log;
+import android.widget.Toast;
 
 public final class HttpUtil {
 	static final private String TAG = "HttpUtil";
@@ -19,20 +20,13 @@ public final class HttpUtil {
 		HttpClient httpclient = new DefaultHttpClient();		
 		HttpGet httpget = new HttpGet(url);		
 		
-		HttpResponse httpResponse = null;
+		HttpResponse httpResponse = null;		
 		
 		try {
 			httpResponse = httpclient.execute(httpget);
-		} catch (ClientProtocolException e) {
-			Log.d(TAG, e.getMessage());
-		} catch (IOException e) {
-			Log.d(TAG, e.getMessage());
-		}
-		
-		String line = "";
-		StringBuilder sb = new StringBuilder();
-		
-		try {
+			
+			String line = "";
+			StringBuilder sb = new StringBuilder();
 			
 			BufferedReader reader = new BufferedReader(
 					new InputStreamReader(httpResponse.getEntity().getContent()));
@@ -51,6 +45,9 @@ public final class HttpUtil {
 			Log.d(TAG, e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
+			Log.d(TAG, e.getMessage());
+			e.printStackTrace();
+		} catch (Exception e) {
 			Log.d(TAG, e.getMessage());
 			e.printStackTrace();
 		}
