@@ -1,0 +1,60 @@
+package com.lesnikovski.utils;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
+
+import android.util.Log;
+
+public final class HttpUtil {
+	static final private String TAG = "HttpUtil";
+	
+	public static String get(String url) {
+		HttpClient httpclient = new DefaultHttpClient();		
+		HttpGet httpget = new HttpGet(url);		
+		
+		HttpResponse httpResponse = null;
+		
+		try {
+			httpResponse = httpclient.execute(httpget);
+		} catch (ClientProtocolException e) {
+			Log.d(TAG, e.getMessage());
+		} catch (IOException e) {
+			Log.d(TAG, e.getMessage());
+		}
+		
+		String line = "";
+		StringBuilder sb = new StringBuilder();
+		
+		try {
+			
+			BufferedReader reader = new BufferedReader(
+					new InputStreamReader(httpResponse.getEntity().getContent()));
+			
+			while((line = reader.readLine()) != null) {
+				sb.append(line);
+			}
+			
+			reader.close();
+			
+			return sb.toString().trim().replace("\n", "").replace("\r", "");
+		} catch (ClientProtocolException e) { 
+			Log.d(TAG, e.getMessage());
+			e.printStackTrace();
+		} catch (IllegalStateException e) {
+			Log.d(TAG, e.getMessage());
+			e.printStackTrace();
+		} catch (IOException e) {
+			Log.d(TAG, e.getMessage());
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+}
