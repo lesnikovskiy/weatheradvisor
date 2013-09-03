@@ -1,34 +1,37 @@
 package com.lesnikovski.weatheradvisor;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.location.Criteria;
-import android.location.Location;
-import android.location.LocationManager;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.View;
-import android.widget.Button;
+import android.widget.TextView;
 
-import com.lesnikovski.models.WeatherData;
 import com.lesnikovski.services.WeatherAdvisorService;
-import com.lesnikovski.weatheradvisor.contracts.WebApiContract;
-import com.lesnikovski.webservice.WebApiService;
 
 public class WeatherAdvisorActivity extends Activity  {		
+	private Intent intent;
+	private TextView weatherTextView;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_weather_advisor);		
+		setContentView(R.layout.activity_weather_advisor);	
+		
+		intent = new Intent(this, WeatherAdvisorService.class);		
 	}
 	
 	public void startServiceClick(View view) {
-		startService(new Intent(this, WeatherAdvisorService.class));
+		startService(intent);
+		registerReceiver(broadcaseReceiver, new IntentFilter(WeatherAdvisorService.BROADCAST_ACTION));
 	}
 	
 	public void stopServiceClick(View view) {
-		stopService(new Intent(this, WeatherAdvisorService.class));
+		stopService(intent);
+		unregisterReceiver(broadcaseReceiver);
 	}
 
 	@Override
@@ -38,4 +41,19 @@ public class WeatherAdvisorActivity extends Activity  {
 		
 		return true;
 	}
+	
+	private BroadcastReceiver broadcaseReceiver = new BroadcastReceiver() {
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			String title = intent.getStringExtra("title");
+			String temp = intent.getStringExtra("temp");
+			String humidity = intent.getStringExtra("humidity");
+			String pressure = intent.getStringExtra("pressure");
+			String windSpeed = intent.getStringExtra("windSpeed");
+			
+			weatherTextView = (TextView) findViewById(R.id.weatherTextView);
+			
+			weatherTextView.setText(String.format("%s\n%s\n%s\n%s\n%s\n", title, temp, humidity, pressure, windSpeed));
+		}
+	};
 }

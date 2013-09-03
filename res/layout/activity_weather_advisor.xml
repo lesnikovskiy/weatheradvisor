@@ -21,5 +21,10 @@
         android:text="@string/stop_service_text"
         android:layout_below="@id/startServiceButton"
         android:onClick="stopServiceClick" />
+    <TextView 
+        android:id="@+id/weatherTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/stopServiceButton" />
 
 </RelativeLayout>

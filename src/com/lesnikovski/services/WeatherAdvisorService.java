@@ -5,12 +5,10 @@ import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
@@ -22,10 +20,17 @@ import com.lesnikovski.webservice.WebApiService;
 
 public class WeatherAdvisorService extends Service {
 	static final private String TAG = "WeatherAdvisorService";
+	static final public String BROADCAST_ACTION = "com.lesnikovski.services.broadcastevent";
+	
+	private final Handler handler = new Handler();
+	private Intent intent;
 	
 	@Override
 	public void onCreate() {
 		super.onCreate();
+		
+		intent = new Intent(BROADCAST_ACTION);
+		
 		showNotification("Weather Advisor", new String[] { "service successfully started."});
 		Log.d(TAG, "Service onCreate()");
 	}
@@ -34,10 +39,17 @@ public class WeatherAdvisorService extends Service {
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		Log.d(TAG, "Service onStartCommand");
 		
-		Thread thread = new Thread(new Runnable() {
-			@Override
-			public void run() {		
-				while (true) {
+		handler.removeCallbacks(updateUi);
+		handler.postDelayed(updateUi, 5000);
+		
+		return super.onStartCommand(intent, flags, startId);
+	}
+	
+	private Runnable updateUi = new Runnable() {
+		public void run() {
+			Thread thread = new Thread(new Runnable() {
+				@Override
+				public void run() {
 					LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 					Criteria criteria = new Criteria();
 					String bestProvider = locationManager.getBestProvider(criteria, false);
@@ -71,22 +83,25 @@ public class WeatherAdvisorService extends Service {
 						
 						showNotification(title, new String[] {temp, humidity, pressure, windSpeed});
 						
-						Thread.sleep(1000*60*60);
+						intent.putExtra("title", title);
+						intent.putExtra("temp", temp);
+						intent.putExtra("humidity", humidity);
+						intent.putExtra("pressure", pressure);
+						intent.putExtra("windSpeed", windSpeed);
+						
+						sendBroadcast(intent);
+						
+						handler.postDelayed(this, 5000);
 					} catch (NullPointerException e) {
-						Log.e(TAG, e.getMessage());
-					} catch (InterruptedException e) {
 						Log.e(TAG, e.getMessage());
 					} catch (Exception e) {
 						Log.e(TAG, e.getMessage());
-					}
-				}
-			}
-		});	
-		
-		thread.start();
-		
-		return super.onStartCommand(intent, flags, startId);
-	}
+					}					
+				}				
+			});
+			thread.start();	
+		}
+	};
 	
 	@Override
 	public void onDestroy() {
