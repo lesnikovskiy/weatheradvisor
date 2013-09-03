@@ -38,20 +38,16 @@ public final class HttpUtil {
 			reader.close();
 			
 			return sb.toString().trim().replace("\n", "").replace("\r", "");
-		} catch (ClientProtocolException e) { 
-			Log.d(TAG, e.getMessage());
+		} catch (ClientProtocolException e) {
 			e.printStackTrace();
 		} catch (IllegalStateException e) {
-			Log.d(TAG, e.getMessage());
 			e.printStackTrace();
 		} catch (IOException e) {
-			Log.d(TAG, e.getMessage());
 			e.printStackTrace();
 		} catch (Exception e) {
-			Log.d(TAG, e.getMessage());
 			e.printStackTrace();
 		}
 		
-		return null;
+		return null;		
 	}
 }

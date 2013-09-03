@@ -44,7 +44,7 @@ public class WeatherAdvisorActivity extends Activity  {
 	
 	private BroadcastReceiver broadcaseReceiver = new BroadcastReceiver() {
 		@Override
-		public void onReceive(Context context, Intent intent) {
+		public void onReceive(Context context, final Intent intent) {
 			String title = intent.getStringExtra("title");
 			String temp = intent.getStringExtra("temp");
 			String humidity = intent.getStringExtra("humidity");
