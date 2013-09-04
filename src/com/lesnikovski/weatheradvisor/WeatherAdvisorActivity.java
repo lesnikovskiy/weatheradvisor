@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.widget.TextView;
@@ -13,6 +14,8 @@ import android.widget.TextView;
 import com.lesnikovski.services.WeatherAdvisorService;
 
 public class WeatherAdvisorActivity extends Activity  {		
+	private static final String TAG = "WeatherAdvisorActivity";
+	
 	private Intent intent;
 	private TextView weatherTextView;
 	
@@ -25,13 +28,23 @@ public class WeatherAdvisorActivity extends Activity  {
 	}
 	
 	public void startServiceClick(View view) {
-		startService(intent);
-		registerReceiver(broadcaseReceiver, new IntentFilter(WeatherAdvisorService.BROADCAST_ACTION));
+		try {
+			startService(intent);
+			registerReceiver(broadcaseReceiver, new IntentFilter(WeatherAdvisorService.BROADCAST_ACTION));
+		} catch (Exception e) {
+			Log.e(TAG, e.getMessage());
+			e.printStackTrace();
+		}
 	}
 	
 	public void stopServiceClick(View view) {
-		stopService(intent);
-		unregisterReceiver(broadcaseReceiver);
+		try {
+			stopService(intent);
+			unregisterReceiver(broadcaseReceiver);
+		} catch (Exception e) {
+			Log.e(TAG, e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -44,16 +57,22 @@ public class WeatherAdvisorActivity extends Activity  {
 	
 	private BroadcastReceiver broadcaseReceiver = new BroadcastReceiver() {
 		@Override
-		public void onReceive(Context context, final Intent intent) {
-			String title = intent.getStringExtra("title");
-			String temp = intent.getStringExtra("temp");
-			String humidity = intent.getStringExtra("humidity");
-			String pressure = intent.getStringExtra("pressure");
-			String windSpeed = intent.getStringExtra("windSpeed");
-			
-			weatherTextView = (TextView) findViewById(R.id.weatherTextView);
-			
-			weatherTextView.setText(String.format("%s\n%s\n%s\n%s\n%s\n", title, temp, humidity, pressure, windSpeed));
+		public void onReceive(Context context, Intent intent) {
+			updateUi(intent);
 		}
 	};
+	
+	private void updateUi(Intent intent) {
+		String title = intent.getStringExtra("title");
+		int temp = intent.getIntExtra("temp", -1);
+		int humidity = intent.getIntExtra("humidity", -1);
+		int pressure = intent.getIntExtra("pressure", -1);
+		int windSpeed = intent.getIntExtra("windSpeed", -1);
+		String diff = intent.getStringExtra("diff");
+		
+		weatherTextView = (TextView) findViewById(R.id.weatherTextView);
+		
+		weatherTextView.setText(String.format("Observation time: %s\nTemperature: %s\u2103\nHumidity: %s%%\nPressure: %s mm\nWindspeed: %s Kmph\n\n%s\n", 
+				title, temp, humidity, pressure, windSpeed, diff));
+	}
 }

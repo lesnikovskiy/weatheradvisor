@@ -13,8 +13,11 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
+import com.lesnikovski.data.LocalDataAdapter;
 import com.lesnikovski.models.Condition;
+import com.lesnikovski.models.LocalData;
 import com.lesnikovski.models.WeatherData;
+import com.lesnikovski.utils.Utils;
 import com.lesnikovski.weatheradvisor.contracts.WebApiContract;
 import com.lesnikovski.webservice.WebApiService;
 
@@ -22,27 +25,29 @@ public class WeatherAdvisorService extends Service {
 	static final public String BROADCAST_ACTION = "com.lesnikovski.services.broadcastevent";
 	
 	static final private String TAG = "WeatherAdvisorService";	
-	private static final int delay = 1000*60;
+	private static final int delay = 1000*60*5;
 	
 	private final Handler handler = new Handler();
 	private Intent intent;	
+	private LocalDataAdapter db;
 	
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		
+				
+		db = new LocalDataAdapter(getApplicationContext());
+		db.open();
 		intent = new Intent(BROADCAST_ACTION);
-		
-		showNotification("Weather Advisor", new String[] { "service successfully started."});
+		handler.removeCallbacks(updateUi);
+				
+		showNotification("Weather Advisor", new String[] { "Service that will update weather conditions started!."});
 		Log.d(TAG, "Service onCreate()");
 	}
 	
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		Log.d(TAG, "Service onStartCommand");
-		
-		handler.removeCallbacks(updateUi);
-		handler.postDelayed(updateUi, delay);
+		Log.d(TAG, "Service onStartCommand");		
+		handler.postDelayed(updateUi, 10);		
 		
 		return super.onStartCommand(intent, flags, startId);
 	}
@@ -52,16 +57,33 @@ public class WeatherAdvisorService extends Service {
 			Thread thread = new Thread(new Runnable() {
 				@Override
 				public void run() {
-					UpdateUiRunnable();					
+					updateUiRunnable();		
 				}				
 			});
 			thread.start();
 			
 			handler.postDelayed(this, delay);
 		}
-	};
+	};	
 	
-	private void UpdateUiRunnable() {		
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		
+		db.close();
+		handler.removeCallbacks(updateUi);
+		
+		showNotification("Weather Advisor", new String[] { "Service has been stopped.", "Start the service to get latest weather conditions." });
+		Log.d(TAG, "Service onDestroy");
+	}
+
+	@Override
+	public IBinder onBind(Intent arg0) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	private synchronized void updateUiRunnable() {		
 		LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		Criteria criteria = new Criteria();
 		String bestProvider = locationManager.getBestProvider(criteria, false);
@@ -77,6 +99,8 @@ public class WeatherAdvisorService extends Service {
 				lon = location.getLongitude();
 			}
 			
+			Log.d(TAG, String.format("Location: %s %s", lat, lon));
+			
 			WebApiContract<WeatherData> webApi = new WebApiService();
 			WeatherData weatherData = webApi.get(lat, lon);
 			
@@ -88,18 +112,55 @@ public class WeatherAdvisorService extends Service {
 			Condition condition = weatherData.getData().getCurrent_condition().get(0);		
 									
 			String title = String.format("Weather: %s", condition.getObservation_time().toString());
-			String temp = String.format("Temperature: %s C", condition.getTemp_C());
-			String humidity = String.format("Humidity: %s", condition.getHumidity());
+			String temp = String.format("Temperature: %s\u2103", condition.getTemp_C());
+			String humidity = String.format("Humidity: %s%%", condition.getHumidity());
 			String pressure = String.format("Pressure: %s mm", condition.getPressure());
 			String windSpeed = String.format("Windspeed: %s Kmph", condition.getWindspeedKmph());
 			
 			showNotification(title, new String[] {temp, humidity, pressure, windSpeed});
 			
-			intent.putExtra("title", title);
-			intent.putExtra("temp", temp);
-			intent.putExtra("humidity", humidity);
-			intent.putExtra("pressure", pressure);
-			intent.putExtra("windSpeed", windSpeed);
+			LocalData data = new LocalData();
+			data.setObservationTime(Utils.getCurrentDateString());
+			data.setTempC(condition.getTemp_C());
+			data.setVisibility(condition.getVisibility());
+			data.setCloudcover(condition.getCloudcover());
+			data.setHumidity(condition.getHumidity());
+			data.setPressure(condition.getPressure());
+			data.setWindspeedKmph(condition.getWindspeedKmph());				
+			
+			boolean result = db.insertData(data);			
+			if (result) {
+				LocalData d = db.getLastData();
+				
+				if (d != null) {				
+					intent.putExtra("title", d.getObservationTime());
+					intent.putExtra("temp", d.getTempC());
+					intent.putExtra("humidity", d.getHumidity());
+					intent.putExtra("pressure", d.getPressure());
+					intent.putExtra("windSpeed", d.getWindspeedKmph());
+				}
+				
+				String difference = "No weather difference! Keep using software to get it soon!";
+				
+				LocalData lastHourD = db.getLastByHoursData(-24);
+				if (lastHourD != null && d != null) {
+					int now = d.getTempC();
+					int yesterday = lastHourD.getTempC();				
+					
+					if (now > yesterday) {
+						difference = String.format("It is warmer: %s degree(s) difference )))", now - yesterday);
+					} else if (now == yesterday) {
+						difference = "The weather is the same. Nothing's changed! Thanks for using the app!";
+					} else {
+						difference = String.format("It is more cold: %s degree(s) difference", yesterday - now);
+					}
+					//int humidityDiff = d.getHumidity() - lastHourD.getHumidity();
+					//int pressDiff = d.getPressure() - lastHourD.getPressure();
+					//int windSDiff = d.getWindspeedKmph() - lastHourD.getWindspeedKmph();
+				}
+				
+				intent.putExtra("diff", difference);
+			}			
 			
 			sendBroadcast(intent);					
 		} catch (NullPointerException e) {
@@ -108,24 +169,11 @@ public class WeatherAdvisorService extends Service {
 			Log.e(TAG, e.getMessage());
 		}	
 	}
-	
-	@Override
-	public void onDestroy() {
-		super.onDestroy();
-		showNotification("Weather Advisor", new String[] { "service has been stopped."});
-		Log.d(TAG, "Service onDestroy");
-	}
-
-	@Override
-	public IBinder onBind(Intent arg0) {
-		// TODO Auto-generated method stub
-		return null;
-	}
 
 	private void showNotification(String title, String[] messages) {			
 		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
 			.setSmallIcon(R.drawable.title_bar)
-			.setContentTitle(title);
+			.setContentTitle(title)			;
 		
 		NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
 		
@@ -137,7 +185,7 @@ public class WeatherAdvisorService extends Service {
 		
 		mBuilder.setStyle(inboxStyle);
 		
-		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);	
 		int notifyId = 1;
 		manager.notify(notifyId, mBuilder.build());
 	}

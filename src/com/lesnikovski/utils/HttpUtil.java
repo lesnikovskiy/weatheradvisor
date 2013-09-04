@@ -10,12 +10,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 
-import android.util.Log;
-import android.widget.Toast;
-
-public final class HttpUtil {
-	static final private String TAG = "HttpUtil";
-	
+public final class HttpUtil {	
 	public static String get(String url) {
 		HttpClient httpclient = new DefaultHttpClient();		
 		HttpGet httpget = new HttpGet(url);		
