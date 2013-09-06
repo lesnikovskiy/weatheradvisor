@@ -89,7 +89,7 @@ public class WeatherAdvisorActivity extends Activity  {
 		if (background.equals(WARMER_STATE))
 			rootLayout.setBackgroundColor(Color.YELLOW);
 		else if (background.equals(COLD_STATE))
-			rootLayout.setBackgroundColor(Color.BLUE);
+			rootLayout.setBackgroundColor(Color.CYAN);
 		else
 			rootLayout.setBackgroundColor(Color.WHITE);
 	}

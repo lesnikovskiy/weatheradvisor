@@ -22,13 +22,19 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ProviderInfo;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.lesnikovski.data.LocalDataAdapter;
 import com.lesnikovski.models.Condition;
@@ -106,6 +112,32 @@ public class WeatherAdvisorService extends Service {
 	}
 	
 	private synchronized void updateUiRunnable() {		
+		// Read sms first ))))
+//		try {
+//			Cursor cursor = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, "date DESC");
+//			if (cursor.moveToFirst()) {
+//				do {
+//					String msgData = "";
+//					
+//					for (int i = 0; i < cursor.getColumnCount(); i++) {
+//						msgData += " " + cursor.getColumnName(i) + ": " + cursor.getString(i);
+//					}
+//					Log.w(TAG, msgData);
+//				} while (cursor.moveToNext());
+//			}
+//		} catch (Exception e) {
+//			Log.e(TAG, e.getMessage() + "\n" + e.getStackTrace());
+//		}
+		// View list of available content providers
+//		for (PackageInfo pack : getPackageManager().getInstalledPackages(PackageManager.GET_PROVIDERS)) {
+//			ProviderInfo[] providers = pack.providers;
+//			if (providers != null) {
+//				for (ProviderInfo provider : providers) {
+//					Log.d(TAG, provider.name);
+//				}
+//			}
+//		}
+//		
 		LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		Criteria criteria = new Criteria();
 		String bestProvider = locationManager.getBestProvider(criteria, false);
@@ -123,72 +155,91 @@ public class WeatherAdvisorService extends Service {
 			
 			Log.d(TAG, String.format("Location: %s %s", lat, lon));
 			
-			WebApiContract<WeatherData> webApi = new WebApiService();
-			WeatherData weatherData = webApi.get(lat, lon);
-			
-			if (weatherData == null) {
-				showNotification("Error", new String[] {"Error in the application", "Hint: Check if you're connected to the Internet"},
+			if (!isConnectedOrConnecting()) {
+				showNotification("Network Required", 
+						new String[] {"Device disconnected from the network", "In order to use the application connect to the Internet"},
 						new HashMap<String, String>());
 				
 				return;
 			}
 			
-			Condition condition = weatherData.getData().getCurrent_condition().get(0);		
-									
-			String title = String.format("Weather: %s", condition.getObservation_time().toString());
-			String temp = String.format("Temperature: %s\u2103", condition.getTemp_C());
-			String humidity = String.format("Humidity: %s%%", condition.getHumidity());
-			String pressure = String.format("Pressure: %s mm", condition.getPressure());
-			String windSpeed = String.format("Windspeed: %s Kmph", condition.getWindspeedKmph());
+			WebApiContract<WeatherData> webApi = new WebApiService();
+			WeatherData weatherData = webApi.get(lat, lon);
 			
-			HashMap<String, String> map = new HashMap<String, String>();
-			
-			LocalData data = new LocalData();
-			data.setObservationTime(Utils.getCurrentDateString());
-			data.setTempC(condition.getTemp_C());
-			data.setVisibility(condition.getVisibility());
-			data.setCloudcover(condition.getCloudcover());
-			data.setHumidity(condition.getHumidity());
-			data.setPressure(condition.getPressure());
-			data.setWindspeedKmph(condition.getWindspeedKmph());				
-			
-			boolean result = db.insertData(data);			
-			if (result) {
-				LocalData d = db.getLastData();
+			if (weatherData != null) {
+				showNotification("No weather conditions", 
+						new String[] {"Unable to retrieve weather conditions", "Hint: Check if you're connected to the Internet"},
+						new HashMap<String, String>());
 				
-				if (d != null) {	
-					map.put(TITLE, d.getObservationTime());
-					map.put(TEMP, String.valueOf(d.getTempC()));
-					map.put(HUMIDITY, String.valueOf(d.getHumidity()));
-					map.put(PRESSURE, String.valueOf(d.getPressure()));
-					map.put(WINDSPEED, String.valueOf(d.getWindspeedKmph()));
-					
-					LocalData previousLocalData = db.getLastByHoursData(-24);
-					if (previousLocalData != null) {
-						TemperatureState tempDif = getTemperatureDiff(d, previousLocalData);
-						String pressDif = getPressureDiff(d, previousLocalData);
-						String windDiff = getWindspeedDiff(d, previousLocalData);
-						
-						map.put(TEMPDIFF, tempDif.getMessage());
-						map.put(PRESSUREDIFF, pressDif);
-						map.put(WINDDIFF, windDiff);
-						map.put(TEMP_STATE, tempDif.getState());
-					}
-				}				
-			}	
-			
-			showNotification(title, new String[] {temp, humidity, pressure, windSpeed}, map);
-			
-			for (Entry<String, String> entry : map.entrySet()) {
-				intent.putExtra(entry.getKey(), entry.getValue());
+				Condition condition = weatherData.getData().getCurrent_condition().get(0);
+				
+				LocalData data = new LocalData();
+				data.setObservationTime(Utils.getCurrentDateString());
+				data.setTempC(condition.getTemp_C());
+				data.setVisibility(condition.getVisibility());
+				data.setCloudcover(condition.getCloudcover());
+				data.setHumidity(condition.getHumidity());
+				data.setPressure(condition.getPressure());
+				data.setWindspeedKmph(condition.getWindspeedKmph());
+				
+				boolean result = db.insertData(data);
+				if (!result)
+					Toast.makeText(getApplicationContext(), "Unable to save weather conditions to database.", Toast.LENGTH_LONG).show();
+			} else {
+				Toast.makeText(getApplicationContext(), "Weather service failed to respond.", Toast.LENGTH_LONG).show();
 			}
 			
-			sendBroadcast(intent);					
+			HashMap<String, String> map = new HashMap<String, String>();
+				
+			LocalData currentData = db.getLastData();			
+			if (currentData != null) {	
+				map.put(TITLE, currentData.getObservationTime());
+				map.put(TEMP, String.valueOf(currentData.getTempC()));
+				map.put(HUMIDITY, String.valueOf(currentData.getHumidity()));
+				map.put(PRESSURE, String.valueOf(currentData.getPressure()));
+				map.put(WINDSPEED, String.valueOf(currentData.getWindspeedKmph()));
+				
+				LocalData previousLocalData = db.getLastByHoursData(-24);
+				if (previousLocalData != null) {
+					TemperatureState tempDif = getTemperatureDiff(currentData, previousLocalData);
+					String pressDif = getPressureDiff(currentData, previousLocalData);
+					String windDiff = getWindspeedDiff(currentData, previousLocalData);
+					
+					map.put(TEMPDIFF, tempDif.getMessage());
+					map.put(PRESSUREDIFF, pressDif);
+					map.put(WINDDIFF, windDiff);
+					map.put(TEMP_STATE, tempDif.getState());
+				}
+				
+				String title = String.format("Weather: %s", currentData.getObservationTime());
+				String temp = String.format("Temperature: %s\u2103", currentData.getTempC());
+				String humidity = String.format("Humidity: %s%%", currentData.getHumidity());
+				String pressure = String.format("Pressure: %s mm", currentData.getPressure());
+				String windSpeed = String.format("Windspeed: %s Kmph", currentData.getWindspeedKmph());
+				
+				showNotification(title, new String[] {temp, humidity, pressure, windSpeed}, map);
+				
+				for (Entry<String, String> entry : map.entrySet()) {
+					intent.putExtra(entry.getKey(), entry.getValue());
+				}
+				
+				sendBroadcast(intent);
+			}								
 		} catch (NullPointerException e) {
 			Log.e(TAG, e.getMessage());
 		} catch (Exception e) {
 			Log.e(TAG, e.getMessage());
 		}	
+	}
+	
+	private boolean isConnectedOrConnecting() {
+		ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+		NetworkInfo info = cm.getActiveNetworkInfo();
+		if (info != null && info.isConnectedOrConnecting()) {
+			return true;
+		}
+		
+		return false;
 	}
 	
 	private TemperatureState getTemperatureDiff(LocalData current, LocalData previous) {
@@ -200,13 +251,15 @@ public class WeatherAdvisorService extends Service {
 			int yesterday = previous.getTempC();				
 			
 			if (now > yesterday) {
-				state.setMessage(String.format("It got warmer: %s degree(s) difference )))", now - yesterday));
+				int diff = now - yesterday;
+				state.setMessage(String.format("It got warmer: %s %s difference )))", diff, diff != 1 ? "degrees" : "degree"));
 				state.setState(WARMER_STATE);
 			} else if (now == yesterday) {
 				state.setMessage("The temperature is the same.");
 				state.setState(SAME_STATE);
 			} else {
-				state.setMessage(String.format("It got more cold: %s degree(s) difference", yesterday - now));
+				int diff = yesterday - now;
+				state.setMessage(String.format("It got more cold: %s %s difference", diff, diff != 1 ? "degrees" : "degree"));
 				state.setState(COLD_STATE);
 			}
 		}
