@@ -1,7 +1,24 @@
 package com.lesnikovski.services;
 
+import static com.lesnikovski.constants.IntentConstants.COLD_STATE;
+import static com.lesnikovski.constants.IntentConstants.HUMIDITY;
+import static com.lesnikovski.constants.IntentConstants.PRESSURE;
+import static com.lesnikovski.constants.IntentConstants.PRESSUREDIFF;
+import static com.lesnikovski.constants.IntentConstants.SAME_STATE;
+import static com.lesnikovski.constants.IntentConstants.TEMP;
+import static com.lesnikovski.constants.IntentConstants.TEMPDIFF;
+import static com.lesnikovski.constants.IntentConstants.TEMP_STATE;
+import static com.lesnikovski.constants.IntentConstants.TITLE;
+import static com.lesnikovski.constants.IntentConstants.WARMER_STATE;
+import static com.lesnikovski.constants.IntentConstants.WINDDIFF;
+import static com.lesnikovski.constants.IntentConstants.WINDSPEED;
+
+import java.util.HashMap;
+import java.util.Map.Entry;
+
 import android.R;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -16,8 +33,10 @@ import android.util.Log;
 import com.lesnikovski.data.LocalDataAdapter;
 import com.lesnikovski.models.Condition;
 import com.lesnikovski.models.LocalData;
+import com.lesnikovski.models.TemperatureState;
 import com.lesnikovski.models.WeatherData;
 import com.lesnikovski.utils.Utils;
+import com.lesnikovski.weatheradvisor.WeatherAdvisorActivity;
 import com.lesnikovski.weatheradvisor.contracts.WebApiContract;
 import com.lesnikovski.webservice.WebApiService;
 
@@ -40,7 +59,9 @@ public class WeatherAdvisorService extends Service {
 		intent = new Intent(BROADCAST_ACTION);
 		handler.removeCallbacks(updateUi);
 				
-		showNotification("Weather Advisor", new String[] { "Service that will update weather conditions started!."});
+		showNotification("Weather Advisor", 
+				new String[] { "Service that will update weather conditions started!."}, 
+				new HashMap<String, String>());
 		Log.d(TAG, "Service onCreate()");
 	}
 	
@@ -73,13 +94,14 @@ public class WeatherAdvisorService extends Service {
 		db.close();
 		handler.removeCallbacks(updateUi);
 		
-		showNotification("Weather Advisor", new String[] { "Service has been stopped.", "Start the service to get latest weather conditions." });
+		showNotification("Weather Advisor", 
+				new String[] { "Service has been stopped.", "Start the service to get latest weather conditions." }, 
+				new HashMap<String, String>());
 		Log.d(TAG, "Service onDestroy");
 	}
 
 	@Override
 	public IBinder onBind(Intent arg0) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 	
@@ -105,7 +127,9 @@ public class WeatherAdvisorService extends Service {
 			WeatherData weatherData = webApi.get(lat, lon);
 			
 			if (weatherData == null) {
-				showNotification("Error", new String[] {"Error in the application", "Hint: Check if you're connected to the Internet"});
+				showNotification("Error", new String[] {"Error in the application", "Hint: Check if you're connected to the Internet"},
+						new HashMap<String, String>());
+				
 				return;
 			}
 			
@@ -117,7 +141,7 @@ public class WeatherAdvisorService extends Service {
 			String pressure = String.format("Pressure: %s mm", condition.getPressure());
 			String windSpeed = String.format("Windspeed: %s Kmph", condition.getWindspeedKmph());
 			
-			showNotification(title, new String[] {temp, humidity, pressure, windSpeed});
+			HashMap<String, String> map = new HashMap<String, String>();
 			
 			LocalData data = new LocalData();
 			data.setObservationTime(Utils.getCurrentDateString());
@@ -132,35 +156,32 @@ public class WeatherAdvisorService extends Service {
 			if (result) {
 				LocalData d = db.getLastData();
 				
-				if (d != null) {				
-					intent.putExtra("title", d.getObservationTime());
-					intent.putExtra("temp", d.getTempC());
-					intent.putExtra("humidity", d.getHumidity());
-					intent.putExtra("pressure", d.getPressure());
-					intent.putExtra("windSpeed", d.getWindspeedKmph());
-				}
-				
-				String difference = "No weather difference! Keep using software to get it soon!";
-				
-				LocalData lastHourD = db.getLastByHoursData(-24);
-				if (lastHourD != null && d != null) {
-					int now = d.getTempC();
-					int yesterday = lastHourD.getTempC();				
+				if (d != null) {	
+					map.put(TITLE, d.getObservationTime());
+					map.put(TEMP, String.valueOf(d.getTempC()));
+					map.put(HUMIDITY, String.valueOf(d.getHumidity()));
+					map.put(PRESSURE, String.valueOf(d.getPressure()));
+					map.put(WINDSPEED, String.valueOf(d.getWindspeedKmph()));
 					
-					if (now > yesterday) {
-						difference = String.format("It is warmer: %s degree(s) difference )))", now - yesterday);
-					} else if (now == yesterday) {
-						difference = "The weather is the same. Nothing's changed! Thanks for using the app!";
-					} else {
-						difference = String.format("It is more cold: %s degree(s) difference", yesterday - now);
+					LocalData previousLocalData = db.getLastByHoursData(-24);
+					if (previousLocalData != null) {
+						TemperatureState tempDif = getTemperatureDiff(d, previousLocalData);
+						String pressDif = getPressureDiff(d, previousLocalData);
+						String windDiff = getWindspeedDiff(d, previousLocalData);
+						
+						map.put(TEMPDIFF, tempDif.getMessage());
+						map.put(PRESSUREDIFF, pressDif);
+						map.put(WINDDIFF, windDiff);
+						map.put(TEMP_STATE, tempDif.getState());
 					}
-					//int humidityDiff = d.getHumidity() - lastHourD.getHumidity();
-					//int pressDiff = d.getPressure() - lastHourD.getPressure();
-					//int windSDiff = d.getWindspeedKmph() - lastHourD.getWindspeedKmph();
-				}
-				
-				intent.putExtra("diff", difference);
-			}			
+				}				
+			}	
+			
+			showNotification(title, new String[] {temp, humidity, pressure, windSpeed}, map);
+			
+			for (Entry<String, String> entry : map.entrySet()) {
+				intent.putExtra(entry.getKey(), entry.getValue());
+			}
 			
 			sendBroadcast(intent);					
 		} catch (NullPointerException e) {
@@ -169,11 +190,82 @@ public class WeatherAdvisorService extends Service {
 			Log.e(TAG, e.getMessage());
 		}	
 	}
+	
+	private TemperatureState getTemperatureDiff(LocalData current, LocalData previous) {
+		TemperatureState state = new TemperatureState();
+		state.setMessage("No information about temperature difference available yet!");
+		
+		if (previous != null && current != null) {
+			int now = current.getTempC();
+			int yesterday = previous.getTempC();				
+			
+			if (now > yesterday) {
+				state.setMessage(String.format("It got warmer: %s degree(s) difference )))", now - yesterday));
+				state.setState(WARMER_STATE);
+			} else if (now == yesterday) {
+				state.setMessage("The temperature is the same.");
+				state.setState(SAME_STATE);
+			} else {
+				state.setMessage(String.format("It got more cold: %s degree(s) difference", yesterday - now));
+				state.setState(COLD_STATE);
+			}
+		}
+		
+		return state;
+	}
+	
+	private String getPressureDiff(LocalData current, LocalData previous) {
+		String diff = "No information about pressure difference available yet!";
+		
+		if (previous != null && current != null) { 
+			int now = current.getPressure();
+			int prev = previous.getPressure();
+			
+			if (now > prev) {
+				diff = String.format("The pressure went down %s mm", now - prev);
+			} else if (now == prev) {
+				diff = "The pressure hasn't changed yet.";
+			} else {
+				diff = String.format("The pressure went up %s mm", prev - now);
+			}
+		}
+		
+		return diff;
+	}
+	
+	private String getWindspeedDiff(LocalData current, LocalData previous) {
+		String diff = "No information about wind speed difference available yet!";
+		
+		if (previous != null && current != null) { 
+			int now = current.getWindspeedKmph();
+			int prev = previous.getWindspeedKmph();
+			
+			if (now > prev) {
+				diff = String.format("The wind speed increased %s KMPH", now - prev);
+			} else if (now == prev) {
+				diff = "The wind speed hasn't changed yet.";
+			} else {
+				diff = String.format("The wind speed decreased %s KMPH", prev - now);
+			}
+		}
+		
+		return diff;
+	}
 
-	private void showNotification(String title, String[] messages) {			
+	private void showNotification(String title, String[] messages, HashMap<String, String> extras) {	
+		Intent intent = new Intent(getApplicationContext(), WeatherAdvisorActivity.class);
+		if (!extras.isEmpty()) {
+			for (Entry<String, String> entry : extras.entrySet()) {
+				intent.putExtra(entry.getKey(), entry.getValue());
+			}
+		}
+		
+		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+		
 		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
 			.setSmallIcon(R.drawable.title_bar)
-			.setContentTitle(title)			;
+			.setContentTitle(title)
+			.setContentIntent(pendingIntent);
 		
 		NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
 		
