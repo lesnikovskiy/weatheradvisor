@@ -1,6 +1,7 @@
 package com.lesnikovski.constants;
 
 public class IntentConstants {
+	static final public String WARNING = "warning";
 	static final public String TITLE = "title";
 	static final public String TEMP = "temp";
 	static final public String HUMIDITY = "humidity";

@@ -8,6 +8,7 @@ import static com.lesnikovski.constants.IntentConstants.SAME_STATE;
 import static com.lesnikovski.constants.IntentConstants.TEMP;
 import static com.lesnikovski.constants.IntentConstants.TEMPDIFF;
 import static com.lesnikovski.constants.IntentConstants.TEMP_STATE;
+import static com.lesnikovski.constants.IntentConstants.WARNING;
 import static com.lesnikovski.constants.IntentConstants.TITLE;
 import static com.lesnikovski.constants.IntentConstants.WARMER_STATE;
 import static com.lesnikovski.constants.IntentConstants.WINDDIFF;
@@ -16,20 +17,16 @@ import static com.lesnikovski.constants.IntentConstants.WINDSPEED;
 import java.util.HashMap;
 import java.util.Map.Entry;
 
-import android.R;
-//import android.R;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.ProviderInfo;
 import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.media.RingtoneManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Handler;
@@ -52,7 +49,10 @@ public class WeatherAdvisorService extends Service {
 	static final public String BROADCAST_ACTION = "com.lesnikovski.services.broadcastevent";
 	
 	static final private String TAG = "WeatherAdvisorService";	
-	private static final int delay = 1000*60*15;
+	static final private int DEFAULT_DELAY = 1000*60*15;
+	static final private int NO_CONNECTION_DELAY = 1000*10;
+	static final private int WI_FI_DELAY = 1000*60*5;
+	static final private int MOBILE_NET_DELAY = 1000*60*60;
 	
 	private final Handler handler = new Handler();
 	private Intent intent;	
@@ -91,7 +91,7 @@ public class WeatherAdvisorService extends Service {
 			});
 			thread.start();
 			
-			handler.postDelayed(this, delay);
+			handler.postDelayed(this, getDelay());
 		}
 	};	
 	
@@ -157,41 +157,35 @@ public class WeatherAdvisorService extends Service {
 			
 			Log.d(TAG, String.format("Location: %s %s", lat, lon));
 			
-			if (!isConnectedOrConnecting()) {
-				showNotification("Network Required", 
-						new String[] {"Device disconnected from the network", "In order to use the application connect to the Internet"},
-						new HashMap<String, String>());
-				
-				return;
-			}
-			
-			WebApiContract<WeatherData> webApi = new WebApiService();
-			WeatherData weatherData = webApi.get(lat, lon);
-			
-			if (weatherData != null) {
-				showNotification("No weather conditions", 
-						new String[] {"Unable to retrieve weather conditions", "Hint: Check if you're connected to the Internet"},
-						new HashMap<String, String>());
-				
-				Condition condition = weatherData.getData().getCurrent_condition().get(0);
-				
-				LocalData data = new LocalData();
-				data.setObservationTime(Utils.getCurrentDateString());
-				data.setTempC(condition.getTemp_C());
-				data.setVisibility(condition.getVisibility());
-				data.setCloudcover(condition.getCloudcover());
-				data.setHumidity(condition.getHumidity());
-				data.setPressure(condition.getPressure());
-				data.setWindspeedKmph(condition.getWindspeedKmph());
-				
-				boolean result = db.insertData(data);
-				if (!result)
-					Toast.makeText(getApplicationContext(), "Unable to save weather conditions to database.", Toast.LENGTH_LONG).show();
-			} else {
-				Toast.makeText(getApplicationContext(), "Weather service failed to respond.", Toast.LENGTH_LONG).show();
-			}
-			
 			HashMap<String, String> map = new HashMap<String, String>();
+			
+			if (isConnectedOrConnecting()) {
+				WebApiContract<WeatherData> webApi = new WebApiService();
+				WeatherData weatherData = webApi.get(lat, lon);
+				
+				if (weatherData != null) {
+					Log.d(TAG, "Unable to retrieve weather conditions, the web service returned null");
+					
+					Condition condition = weatherData.getData().getCurrent_condition().get(0);
+					
+					LocalData data = new LocalData();
+					data.setObservationTime(Utils.getCurrentDateString());
+					data.setTempC(condition.getTemp_C());
+					data.setVisibility(condition.getVisibility());
+					data.setCloudcover(condition.getCloudcover());
+					data.setHumidity(condition.getHumidity());
+					data.setPressure(condition.getPressure());
+					data.setWindspeedKmph(condition.getWindspeedKmph());
+					
+					boolean result = db.insertData(data);
+					if (!result)
+						Toast.makeText(getApplicationContext(), "Unable to save weather conditions to database.", Toast.LENGTH_LONG).show();
+				} else {
+					Toast.makeText(getApplicationContext(), "Weather service failed to respond.", Toast.LENGTH_LONG).show();
+				}
+			} else {
+				map.put(WARNING, "Warning: No internet connection!");
+			}
 				
 			LocalData currentData = db.getLastData();			
 			if (currentData != null) {	
@@ -242,6 +236,26 @@ public class WeatherAdvisorService extends Service {
 		}
 		
 		return false;
+	}
+	
+	private int getDelay() {		
+		ConnectivityManager cm = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+		NetworkInfo network = cm.getActiveNetworkInfo();
+		if (network == null)
+			return NO_CONNECTION_DELAY;
+		
+		boolean isConnected = network.isConnectedOrConnecting();
+		if (!isConnected)
+			return NO_CONNECTION_DELAY;
+		
+		switch (network.getType()) {
+			case ConnectivityManager.TYPE_WIFI:
+				return WI_FI_DELAY;
+			case ConnectivityManager.TYPE_MOBILE:
+				return MOBILE_NET_DELAY;
+			default:
+				return DEFAULT_DELAY;
+		}
 	}
 	
 	private TemperatureState getTemperatureDiff(LocalData current, LocalData previous) {
@@ -321,7 +335,9 @@ public class WeatherAdvisorService extends Service {
 			.setSmallIcon(com.lesnikovski.weatheradvisor.R.drawable.wad_icon)
 			.setLargeIcon(BitmapFactory.decodeResource(getApplicationContext().getResources(), com.lesnikovski.weatheradvisor.R.drawable.wad_icon))
 			.setContentTitle(title)
-			.setContentIntent(pendingIntent);
+			.setContentIntent(pendingIntent)
+			.setOnlyAlertOnce(true)
+			.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
 		
 		NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
 		

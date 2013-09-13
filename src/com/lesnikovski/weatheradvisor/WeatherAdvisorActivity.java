@@ -7,6 +7,7 @@ import static com.lesnikovski.constants.IntentConstants.PRESSUREDIFF;
 import static com.lesnikovski.constants.IntentConstants.TEMP;
 import static com.lesnikovski.constants.IntentConstants.TEMPDIFF;
 import static com.lesnikovski.constants.IntentConstants.TEMP_STATE;
+import static com.lesnikovski.constants.IntentConstants.WARNING;
 import static com.lesnikovski.constants.IntentConstants.TITLE;
 import static com.lesnikovski.constants.IntentConstants.WARMER_STATE;
 import static com.lesnikovski.constants.IntentConstants.WINDDIFF;
@@ -20,6 +21,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.RelativeLayout;
@@ -32,12 +34,13 @@ public class WeatherAdvisorActivity extends Activity  {
 	
 	private Intent intent;
 	private TextView weatherTextView;
+	private TextView warningTextView;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_weather_advisor);	
-		
+				
 		intent = new Intent(this, WeatherAdvisorService.class);		
 		startService();
 		
@@ -79,12 +82,17 @@ public class WeatherAdvisorActivity extends Activity  {
 		String pressDiff = intent.getStringExtra(PRESSUREDIFF);
 		String windDiff = intent.getStringExtra(WINDDIFF);
 		String background = intent.getStringExtra(TEMP_STATE);
+		String warning = intent.getStringExtra(WARNING);
 		
 		weatherTextView = (TextView) findViewById(R.id.weatherTextView);
+		warningTextView = (TextView) findViewById(R.id.warningTextView);
 		RelativeLayout rootLayout = (RelativeLayout) findViewById(R.id.rootLayout);
 		
 		weatherTextView.setText(String.format("Observation time: %s\nTemperature: %s\u2103\nHumidity: %s%%\nPressure: %s mm\nWindspeed: %s Kmph\n\n%s\n%s\n%s\n", 
 				title, temp, humidity, pressure, windSpeed, tempDiff, pressDiff, windDiff));
+		
+		if (!TextUtils.isEmpty(warning))
+			warningTextView.setText(warning);
 		
 		if (background.equals(WARMER_STATE))
 			rootLayout.setBackgroundColor(Color.YELLOW);
