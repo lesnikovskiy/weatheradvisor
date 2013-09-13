@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 import android.R;
+//import android.R;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -25,6 +26,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
+import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
@@ -50,7 +52,7 @@ public class WeatherAdvisorService extends Service {
 	static final public String BROADCAST_ACTION = "com.lesnikovski.services.broadcastevent";
 	
 	static final private String TAG = "WeatherAdvisorService";	
-	private static final int delay = 1000*60*5;
+	private static final int delay = 1000*60*15;
 	
 	private final Handler handler = new Handler();
 	private Intent intent;	
@@ -316,7 +318,8 @@ public class WeatherAdvisorService extends Service {
 		PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 		
 		NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
-			.setSmallIcon(R.drawable.title_bar)
+			.setSmallIcon(com.lesnikovski.weatheradvisor.R.drawable.wad_icon)
+			.setLargeIcon(BitmapFactory.decodeResource(getApplicationContext().getResources(), com.lesnikovski.weatheradvisor.R.drawable.wad_icon))
 			.setContentTitle(title)
 			.setContentIntent(pendingIntent);
 		
