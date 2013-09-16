@@ -12,6 +12,8 @@ public class IntentConstants {
 	static final public String WINDDIFF = "windDiff";
 	static final public String TEMP_STATE = "temp_state";
 	
+	static final public String STOP_SERVICE = "stop_service";
+	
 	static final public String WARMER_STATE = "warmer";
 	static final public String COLD_STATE = "cold";
 	static final public String SAME_STATE = "same";

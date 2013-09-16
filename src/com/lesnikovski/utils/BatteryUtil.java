@@ -14,6 +14,18 @@ public class BatteryUtil {
 		return getBatteryStatus(context) == BatteryManager.BATTERY_STATUS_FULL;
 	}
 	
+	public static float getBatterLevel(Context context) {
+		IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_LOW);
+		intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED);
+		
+		Intent batteryLevel = context.registerReceiver(null, intentFilter);
+		
+		int level = batteryLevel.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+		int scale = batteryLevel.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+		
+		return level / (float) scale;
+	}
+	
 	private static int getBatteryStatus(Context context) {
 		IntentFilter intentFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
 		Intent batteryStatus = context.registerReceiver(null, intentFilter);

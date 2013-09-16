@@ -8,11 +8,12 @@ import static com.lesnikovski.constants.IntentConstants.SAME_STATE;
 import static com.lesnikovski.constants.IntentConstants.TEMP;
 import static com.lesnikovski.constants.IntentConstants.TEMPDIFF;
 import static com.lesnikovski.constants.IntentConstants.TEMP_STATE;
-import static com.lesnikovski.constants.IntentConstants.WARNING;
 import static com.lesnikovski.constants.IntentConstants.TITLE;
 import static com.lesnikovski.constants.IntentConstants.WARMER_STATE;
+import static com.lesnikovski.constants.IntentConstants.WARNING;
 import static com.lesnikovski.constants.IntentConstants.WINDDIFF;
 import static com.lesnikovski.constants.IntentConstants.WINDSPEED;
+import static com.lesnikovski.constants.IntentConstants.STOP_SERVICE;
 
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -22,6 +23,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
@@ -40,6 +42,7 @@ import com.lesnikovski.models.Condition;
 import com.lesnikovski.models.LocalData;
 import com.lesnikovski.models.TemperatureState;
 import com.lesnikovski.models.WeatherData;
+import com.lesnikovski.utils.BatteryUtil;
 import com.lesnikovski.utils.Utils;
 import com.lesnikovski.weatheradvisor.WeatherAdvisorActivity;
 import com.lesnikovski.weatheradvisor.contracts.WebApiContract;
@@ -49,10 +52,10 @@ public class WeatherAdvisorService extends Service {
 	static final public String BROADCAST_ACTION = "com.lesnikovski.services.broadcastevent";
 	
 	static final private String TAG = "WeatherAdvisorService";	
-	static final private int DEFAULT_DELAY = 1000*60*15;
-	static final private int NO_CONNECTION_DELAY = 1000*10;
-	static final private int WI_FI_DELAY = 1000*60*5;
-	static final private int MOBILE_NET_DELAY = 1000*60*60;
+	static final private int DEFAULT_DELAY = 1000*60*15; // 15 minutes
+	static final private int NO_CONNECTION_DELAY = 1000*10; // 10 seconds
+	static final private int WI_FI_DELAY = 1000*60*5; //  5 minutes
+	static final private int MOBILE_NET_DELAY = 1000*60*60; // 1 hour
 	
 	private final Handler handler = new Handler();
 	private Intent intent;	
@@ -76,7 +79,7 @@ public class WeatherAdvisorService extends Service {
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
 		Log.d(TAG, "Service onStartCommand");		
-		handler.postDelayed(updateUi, 10);		
+		handler.postDelayed(updateUi, 10);	
 		
 		return super.onStartCommand(intent, flags, startId);
 	}
@@ -213,7 +216,9 @@ public class WeatherAdvisorService extends Service {
 				String pressure = String.format("Pressure: %s mm", currentData.getPressure());
 				String windSpeed = String.format("Windspeed: %s Kmph", currentData.getWindspeedKmph());
 				
-				showNotification(title, new String[] {temp, humidity, pressure, windSpeed}, map);
+				intent.putExtra(STOP_SERVICE, shouldStopService());
+				
+				showNotification(title, new String[] {temp, humidity, pressure, windSpeed}, map);				
 				
 				for (Entry<String, String> entry : map.entrySet()) {
 					intent.putExtra(entry.getKey(), entry.getValue());
@@ -256,6 +261,15 @@ public class WeatherAdvisorService extends Service {
 			default:
 				return DEFAULT_DELAY;
 		}
+	}
+	
+	private boolean shouldStopService() {
+		float batteryLevel = BatteryUtil.getBatterLevel(getApplicationContext());
+		
+		if (batteryLevel < 0.14)
+			return true;
+		else
+			return false;
 	}
 	
 	private TemperatureState getTemperatureDiff(LocalData current, LocalData previous) {

@@ -4,12 +4,13 @@ import static com.lesnikovski.constants.IntentConstants.COLD_STATE;
 import static com.lesnikovski.constants.IntentConstants.HUMIDITY;
 import static com.lesnikovski.constants.IntentConstants.PRESSURE;
 import static com.lesnikovski.constants.IntentConstants.PRESSUREDIFF;
+import static com.lesnikovski.constants.IntentConstants.STOP_SERVICE;
 import static com.lesnikovski.constants.IntentConstants.TEMP;
 import static com.lesnikovski.constants.IntentConstants.TEMPDIFF;
 import static com.lesnikovski.constants.IntentConstants.TEMP_STATE;
-import static com.lesnikovski.constants.IntentConstants.WARNING;
 import static com.lesnikovski.constants.IntentConstants.TITLE;
 import static com.lesnikovski.constants.IntentConstants.WARMER_STATE;
+import static com.lesnikovski.constants.IntentConstants.WARNING;
 import static com.lesnikovski.constants.IntentConstants.WINDDIFF;
 import static com.lesnikovski.constants.IntentConstants.WINDSPEED;
 import android.app.Activity;
@@ -42,7 +43,7 @@ public class WeatherAdvisorActivity extends Activity  {
 		setContentView(R.layout.activity_weather_advisor);	
 				
 		intent = new Intent(this, WeatherAdvisorService.class);		
-		startService();
+		startService();	
 		
 		Intent currentIntent = getIntent();
 		if (currentIntent != null && currentIntent.getExtras() != null) {
@@ -84,6 +85,8 @@ public class WeatherAdvisorActivity extends Activity  {
 		String background = intent.getStringExtra(TEMP_STATE);
 		String warning = intent.getStringExtra(WARNING);
 		
+		boolean stopService = intent.getBooleanExtra(STOP_SERVICE, false);
+		
 		weatherTextView = (TextView) findViewById(R.id.weatherTextView);
 		warningTextView = (TextView) findViewById(R.id.warningTextView);
 		RelativeLayout rootLayout = (RelativeLayout) findViewById(R.id.rootLayout);
@@ -100,6 +103,9 @@ public class WeatherAdvisorActivity extends Activity  {
 			rootLayout.setBackgroundColor(Color.CYAN);
 		else
 			rootLayout.setBackgroundColor(Color.WHITE);
+		
+		if (stopService)
+			stopService();
 	}
 	
 	private boolean isServiceRunning() {
