@@ -2,18 +2,21 @@ package com.lesnikovski.services;
 
 import static com.lesnikovski.constants.IntentConstants.COLD_STATE;
 import static com.lesnikovski.constants.IntentConstants.HUMIDITY;
+import static com.lesnikovski.constants.IntentConstants.PERCEIVED_TEMP;
 import static com.lesnikovski.constants.IntentConstants.PRESSURE;
 import static com.lesnikovski.constants.IntentConstants.PRESSUREDIFF;
 import static com.lesnikovski.constants.IntentConstants.SAME_STATE;
+import static com.lesnikovski.constants.IntentConstants.STOP_SERVICE;
 import static com.lesnikovski.constants.IntentConstants.TEMP;
 import static com.lesnikovski.constants.IntentConstants.TEMPDIFF;
 import static com.lesnikovski.constants.IntentConstants.TEMP_STATE;
 import static com.lesnikovski.constants.IntentConstants.TITLE;
 import static com.lesnikovski.constants.IntentConstants.WARMER_STATE;
 import static com.lesnikovski.constants.IntentConstants.WARNING;
+import static com.lesnikovski.constants.IntentConstants.WINDCHILL;
 import static com.lesnikovski.constants.IntentConstants.WINDDIFF;
 import static com.lesnikovski.constants.IntentConstants.WINDSPEED;
-import static com.lesnikovski.constants.IntentConstants.STOP_SERVICE;
+import static com.lesnikovski.constants.IntentConstants.DEWPOINT;
 
 import java.util.HashMap;
 import java.util.Map.Entry;
@@ -23,7 +26,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.graphics.BitmapFactory;
 import android.location.Criteria;
 import android.location.Location;
@@ -43,7 +45,8 @@ import com.lesnikovski.models.LocalData;
 import com.lesnikovski.models.TemperatureState;
 import com.lesnikovski.models.WeatherData;
 import com.lesnikovski.utils.BatteryUtil;
-import com.lesnikovski.utils.Utils;
+import com.lesnikovski.utils.DateUtil;
+import com.lesnikovski.utils.WeatherUtil;
 import com.lesnikovski.weatheradvisor.WeatherAdvisorActivity;
 import com.lesnikovski.weatheradvisor.contracts.WebApiContract;
 import com.lesnikovski.webservice.WebApiService;
@@ -117,32 +120,6 @@ public class WeatherAdvisorService extends Service {
 	}
 	
 	private synchronized void updateUiRunnable() {		
-		// Read sms first ))))
-//		try {
-//			Cursor cursor = getContentResolver().query(Uri.parse("content://sms/inbox"), null, null, null, "date DESC");
-//			if (cursor.moveToFirst()) {
-//				do {
-//					String msgData = "";
-//					
-//					for (int i = 0; i < cursor.getColumnCount(); i++) {
-//						msgData += " " + cursor.getColumnName(i) + ": " + cursor.getString(i);
-//					}
-//					Log.w(TAG, msgData);
-//				} while (cursor.moveToNext());
-//			}
-//		} catch (Exception e) {
-//			Log.e(TAG, e.getMessage() + "\n" + e.getStackTrace());
-//		}
-		// View list of available content providers
-//		for (PackageInfo pack : getPackageManager().getInstalledPackages(PackageManager.GET_PROVIDERS)) {
-//			ProviderInfo[] providers = pack.providers;
-//			if (providers != null) {
-//				for (ProviderInfo provider : providers) {
-//					Log.d(TAG, provider.name);
-//				}
-//			}
-//		}
-//		
 		LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		Criteria criteria = new Criteria();
 		String bestProvider = locationManager.getBestProvider(criteria, false);
@@ -172,7 +149,7 @@ public class WeatherAdvisorService extends Service {
 					Condition condition = weatherData.getData().getCurrent_condition().get(0);
 					
 					LocalData data = new LocalData();
-					data.setObservationTime(Utils.getCurrentDateString());
+					data.setObservationTime(DateUtil.getCurrentDateString());
 					data.setTempC(condition.getTemp_C());
 					data.setVisibility(condition.getVisibility());
 					data.setCloudcover(condition.getCloudcover());
@@ -194,9 +171,12 @@ public class WeatherAdvisorService extends Service {
 			if (currentData != null) {	
 				map.put(TITLE, currentData.getObservationTime());
 				map.put(TEMP, String.valueOf(currentData.getTempC()));
+				map.put(PERCEIVED_TEMP, String.valueOf(WeatherUtil.getHumidex(currentData.getTempC(), currentData.getHumidity())));
+				map.put(DEWPOINT, String.valueOf(WeatherUtil.getDewPoint(currentData.getTempC(), currentData.getHumidity())));
 				map.put(HUMIDITY, String.valueOf(currentData.getHumidity()));
 				map.put(PRESSURE, String.valueOf(currentData.getPressure()));
 				map.put(WINDSPEED, String.valueOf(currentData.getWindspeedKmph()));
+				map.put(WINDCHILL, String.valueOf(WeatherUtil.getWindChill(currentData.getTempC(), currentData.getWindspeedKmph())));
 				
 				LocalData previousLocalData = db.getLastByHoursData(-24);
 				if (previousLocalData != null) {
@@ -212,13 +192,16 @@ public class WeatherAdvisorService extends Service {
 				
 				String title = String.format("Weather: %s", currentData.getObservationTime());
 				String temp = String.format("Temperature: %s\u2103", currentData.getTempC());
+				String perceived_temp = String.format("Perceived temp: %s\u2103", WeatherUtil.getHumidex(currentData.getTempC(), currentData.getHumidity()));
+				String dewpoint = String.format("Dew point: %s\u2103", WeatherUtil.getDewPoint(currentData.getTempC(), currentData.getHumidity()));
 				String humidity = String.format("Humidity: %s%%", currentData.getHumidity());
 				String pressure = String.format("Pressure: %s mm", currentData.getPressure());
 				String windSpeed = String.format("Windspeed: %s Kmph", currentData.getWindspeedKmph());
+				String windChill = String.format("Wind Chill Factor: %s", WeatherUtil.getWindChill(currentData.getTempC(), currentData.getWindspeedKmph()));
 				
 				intent.putExtra(STOP_SERVICE, shouldStopService());
 				
-				showNotification(title, new String[] {temp, humidity, pressure, windSpeed}, map);				
+				showNotification(title, new String[] {temp, perceived_temp, dewpoint, humidity, pressure, windSpeed, windChill}, map);				
 				
 				for (Entry<String, String> entry : map.entrySet()) {
 					intent.putExtra(entry.getKey(), entry.getValue());
@@ -277,8 +260,8 @@ public class WeatherAdvisorService extends Service {
 		state.setMessage("No information about temperature difference available yet!");
 		
 		if (previous != null && current != null) {
-			int now = current.getTempC();
-			int yesterday = previous.getTempC();				
+			int now = WeatherUtil.getHumidex(current.getTempC(), current.getHumidity());
+			int yesterday = WeatherUtil.getHumidex(previous.getTempC(), previous.getHumidity()) ;				
 			
 			if (now > yesterday) {
 				int diff = now - yesterday;

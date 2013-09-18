@@ -1,7 +1,9 @@
 package com.lesnikovski.weatheradvisor;
 
 import static com.lesnikovski.constants.IntentConstants.COLD_STATE;
+import static com.lesnikovski.constants.IntentConstants.DEWPOINT;
 import static com.lesnikovski.constants.IntentConstants.HUMIDITY;
+import static com.lesnikovski.constants.IntentConstants.PERCEIVED_TEMP;
 import static com.lesnikovski.constants.IntentConstants.PRESSURE;
 import static com.lesnikovski.constants.IntentConstants.PRESSUREDIFF;
 import static com.lesnikovski.constants.IntentConstants.STOP_SERVICE;
@@ -11,6 +13,7 @@ import static com.lesnikovski.constants.IntentConstants.TEMP_STATE;
 import static com.lesnikovski.constants.IntentConstants.TITLE;
 import static com.lesnikovski.constants.IntentConstants.WARMER_STATE;
 import static com.lesnikovski.constants.IntentConstants.WARNING;
+import static com.lesnikovski.constants.IntentConstants.WINDCHILL;
 import static com.lesnikovski.constants.IntentConstants.WINDDIFF;
 import static com.lesnikovski.constants.IntentConstants.WINDSPEED;
 import android.app.Activity;
@@ -76,12 +79,15 @@ public class WeatherAdvisorActivity extends Activity  {
 	private void updateUi(Intent intent) {
 		String title = intent.getStringExtra(TITLE);
 		String temp = intent.getStringExtra(TEMP);
+		String perceived_temp = intent.getStringExtra(PERCEIVED_TEMP);
+		String dewpoint = intent.getStringExtra(DEWPOINT);
 		String humidity = intent.getStringExtra(HUMIDITY);
 		String pressure = intent.getStringExtra(PRESSURE);
 		String windSpeed = intent.getStringExtra(WINDSPEED);
 		String tempDiff = intent.getStringExtra(TEMPDIFF);
 		String pressDiff = intent.getStringExtra(PRESSUREDIFF);
 		String windDiff = intent.getStringExtra(WINDDIFF);
+		String windChill = intent.getStringExtra(WINDCHILL);
 		String background = intent.getStringExtra(TEMP_STATE);
 		String warning = intent.getStringExtra(WARNING);
 		
@@ -91,8 +97,8 @@ public class WeatherAdvisorActivity extends Activity  {
 		warningTextView = (TextView) findViewById(R.id.warningTextView);
 		RelativeLayout rootLayout = (RelativeLayout) findViewById(R.id.rootLayout);
 		
-		weatherTextView.setText(String.format("Observation time: %s\nTemperature: %s\u2103\nHumidity: %s%%\nPressure: %s mm\nWindspeed: %s Kmph\n\n%s\n%s\n%s\n", 
-				title, temp, humidity, pressure, windSpeed, tempDiff, pressDiff, windDiff));
+		weatherTextView.setText(String.format("Observation time: %s\nTemperature: %s\u2103\nPerceived Temperature: %s\u2103\nDew Point: %s\u2103\nHumidity: %s%%\nPressure: %s mm\nWindspeed: %s Kmph\nWind Chill: %s\n\n%s\n%s\n%s\n", 
+				title, temp, perceived_temp, dewpoint, humidity, pressure, windSpeed, windChill, tempDiff, pressDiff, windDiff));
 		
 		if (!TextUtils.isEmpty(warning))
 			warningTextView.setText(warning);

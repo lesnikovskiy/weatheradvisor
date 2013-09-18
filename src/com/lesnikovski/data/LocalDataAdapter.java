@@ -13,7 +13,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 import com.lesnikovski.models.LocalData;
-import com.lesnikovski.utils.Utils;
+import com.lesnikovski.utils.DateUtil;
 
 public class LocalDataAdapter {
 	static final private String TAG = "LocalDataAdapter";
@@ -112,13 +112,13 @@ public class LocalDataAdapter {
 	}
 	
 	public LocalData getLastByHoursData(int hours) {		
-		String condition = Utils.getDateString(hours);
+		String condition = DateUtil.getDateString(hours);
 		
 		return getLastRecordByDate(condition);
 	}
 	
 	public LocalData getLastByMinutesData(int minutes) {		
-		String condition = Utils.getDateStringByMinutes(minutes);		
+		String condition = DateUtil.getDateStringByMinutes(minutes);		
 		
 		return getLastRecordByDate(condition);
 	}

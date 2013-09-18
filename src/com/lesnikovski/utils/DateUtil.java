@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
 
-public class Utils {
+public class DateUtil {
 	static final private String FORMAT = "yyyy-MM-dd HH:mm:ss";
 	
 	public static String getCurrentDateString() {
