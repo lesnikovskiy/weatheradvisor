@@ -3,7 +3,7 @@ package com.lesnikovski.weatheradvisor;
 import static com.lesnikovski.constants.IntentConstants.COLD_STATE;
 import static com.lesnikovski.constants.IntentConstants.DEWPOINT;
 import static com.lesnikovski.constants.IntentConstants.HUMIDITY;
-import static com.lesnikovski.constants.IntentConstants.PERCEIVED_TEMP;
+import static com.lesnikovski.constants.IntentConstants.HUMIDEX;
 import static com.lesnikovski.constants.IntentConstants.PRESSURE;
 import static com.lesnikovski.constants.IntentConstants.PRESSUREDIFF;
 import static com.lesnikovski.constants.IntentConstants.STOP_SERVICE;
@@ -79,7 +79,7 @@ public class WeatherAdvisorActivity extends Activity  {
 	private void updateUi(Intent intent) {
 		String title = intent.getStringExtra(TITLE);
 		String temp = intent.getStringExtra(TEMP);
-		String perceived_temp = intent.getStringExtra(PERCEIVED_TEMP);
+		String perceived_temp = intent.getStringExtra(HUMIDEX);
 		String dewpoint = intent.getStringExtra(DEWPOINT);
 		String humidity = intent.getStringExtra(HUMIDITY);
 		String pressure = intent.getStringExtra(PRESSURE);
@@ -97,7 +97,7 @@ public class WeatherAdvisorActivity extends Activity  {
 		warningTextView = (TextView) findViewById(R.id.warningTextView);
 		RelativeLayout rootLayout = (RelativeLayout) findViewById(R.id.rootLayout);
 		
-		weatherTextView.setText(String.format("Observation time: %s\nTemperature: %s\u2103\nPerceived Temperature: %s\u2103\nDew Point: %s\u2103\nHumidity: %s%%\nPressure: %s mm\nWindspeed: %s Kmph\nWind Chill: %s\n\n%s\n%s\n%s\n", 
+		weatherTextView.setText(String.format("Observation time: %s\nTemperature: %s\u2103\nHumidex: %s\u2103\nDew Point: %s\u2103\nHumidity: %s%%\nPressure: %s mm\nWindspeed: %s Kmph\nWind Chill: %s\u2103\n\n%s\n%s\n%s\n", 
 				title, temp, perceived_temp, dewpoint, humidity, pressure, windSpeed, windChill, tempDiff, pressDiff, windDiff));
 		
 		if (!TextUtils.isEmpty(warning))

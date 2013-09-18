@@ -2,7 +2,7 @@ package com.lesnikovski.services;
 
 import static com.lesnikovski.constants.IntentConstants.COLD_STATE;
 import static com.lesnikovski.constants.IntentConstants.HUMIDITY;
-import static com.lesnikovski.constants.IntentConstants.PERCEIVED_TEMP;
+import static com.lesnikovski.constants.IntentConstants.HUMIDEX;
 import static com.lesnikovski.constants.IntentConstants.PRESSURE;
 import static com.lesnikovski.constants.IntentConstants.PRESSUREDIFF;
 import static com.lesnikovski.constants.IntentConstants.SAME_STATE;
@@ -171,7 +171,7 @@ public class WeatherAdvisorService extends Service {
 			if (currentData != null) {	
 				map.put(TITLE, currentData.getObservationTime());
 				map.put(TEMP, String.valueOf(currentData.getTempC()));
-				map.put(PERCEIVED_TEMP, String.valueOf(WeatherUtil.getHumidex(currentData.getTempC(), currentData.getHumidity())));
+				map.put(HUMIDEX, String.valueOf(WeatherUtil.getHumidex(currentData.getTempC(), currentData.getHumidity())));
 				map.put(DEWPOINT, String.valueOf(WeatherUtil.getDewPoint(currentData.getTempC(), currentData.getHumidity())));
 				map.put(HUMIDITY, String.valueOf(currentData.getHumidity()));
 				map.put(PRESSURE, String.valueOf(currentData.getPressure()));
@@ -192,12 +192,12 @@ public class WeatherAdvisorService extends Service {
 				
 				String title = String.format("Weather: %s", currentData.getObservationTime());
 				String temp = String.format("Temperature: %s\u2103", currentData.getTempC());
-				String perceived_temp = String.format("Perceived temp: %s\u2103", WeatherUtil.getHumidex(currentData.getTempC(), currentData.getHumidity()));
+				String perceived_temp = String.format("Humidex: %s\u2103", WeatherUtil.getHumidex(currentData.getTempC(), currentData.getHumidity()));
 				String dewpoint = String.format("Dew point: %s\u2103", WeatherUtil.getDewPoint(currentData.getTempC(), currentData.getHumidity()));
 				String humidity = String.format("Humidity: %s%%", currentData.getHumidity());
 				String pressure = String.format("Pressure: %s mm", currentData.getPressure());
 				String windSpeed = String.format("Windspeed: %s Kmph", currentData.getWindspeedKmph());
-				String windChill = String.format("Wind Chill Factor: %s", WeatherUtil.getWindChill(currentData.getTempC(), currentData.getWindspeedKmph()));
+				String windChill = String.format("Wind Chill Factor: %s\u2103", WeatherUtil.getWindChill(currentData.getTempC(), currentData.getWindspeedKmph()));
 				
 				intent.putExtra(STOP_SERVICE, shouldStopService());
 				

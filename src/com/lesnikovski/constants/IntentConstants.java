@@ -11,7 +11,7 @@ public class IntentConstants {
 	static final public String PRESSUREDIFF = "pressureDiff";
 	static final public String WINDDIFF = "windDiff";
 	static final public String TEMP_STATE = "temp_state";
-	static final public String PERCEIVED_TEMP = "perceived_temp";
+	static final public String HUMIDEX = "humidex";
 	static final public String WINDCHILL = "windchill";
 	static final public String DEWPOINT = "dewpoint";
 	
