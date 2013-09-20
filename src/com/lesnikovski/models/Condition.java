@@ -1,5 +1,7 @@
 package com.lesnikovski.models;
 
+import java.util.List;
+
 public class Condition {
 	private int cloudcover;
 	private int humidity;
@@ -13,6 +15,7 @@ public class Condition {
 	private int winddirDegree;
 	private int windspeedKmph;
 	private int windspeedMiles;
+	private List<WeatherDesc> weatherDesc;
 	
 	public int getCloudcover() {
 		return cloudcover;
@@ -85,5 +88,11 @@ public class Condition {
 	}
 	public void setWindspeedMiles(int windspeedMiles) {
 		this.windspeedMiles = windspeedMiles;
+	}
+	public List<WeatherDesc> getWeatherDesc() {
+		return weatherDesc;
+	}
+	public void setWeatherDesc(List<WeatherDesc> weatherDesc) {
+		this.weatherDesc = weatherDesc;
 	}
 }
