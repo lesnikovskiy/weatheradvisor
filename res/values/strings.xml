@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Weather Advisor</string>
+    <string name="app_name">Mitten</string>
     <string name="action_settings">Settings</string>
     <string name="display_text">Weather Info pending &#8230;&#8230;&#8230;</string>
     <string name="get_weather">Get Weather Data</string>
